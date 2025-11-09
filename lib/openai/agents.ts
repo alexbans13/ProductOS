@@ -17,10 +17,22 @@ export async function runAgent(
   userMessage?: string
 ): Promise<string> {
   try {
+    // Enhance system prompt with formatting instructions
+    const enhancedSystemPrompt = `${systemPrompt}
+
+IMPORTANT FORMATTING REQUIREMENTS:
+- Format your response in clear, human-readable text (not JSON)
+- Use markdown formatting with headings (##, ###), bullet points (-), and numbered lists
+- Organize your analysis into clear sections with descriptive headings
+- Use bold text (**text**) for emphasis on key points
+- Break up long paragraphs for readability
+- Include specific examples and data points where relevant
+- End with clear, actionable recommendations or insights`
+
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: systemPrompt,
+        content: enhancedSystemPrompt,
       },
       {
         role: 'user',
@@ -43,23 +55,54 @@ export async function runAgent(
 }
 
 function buildContextMessage(context: AgentContext): string {
-  let message = `Project: ${context.projectName}\n`
+  let message = `# Project Context\n\n`
+  message += `**Project Name:** ${context.projectName}\n\n`
   
   if (context.projectDescription) {
-    message += `Description: ${context.projectDescription}\n\n`
+    message += `**Project Description:**\n${context.projectDescription}\n\n`
   }
 
-  message += `Refreshed Data:\n${JSON.stringify(context.refreshedData, null, 2)}\n\n`
+  message += `## Available Data Sources\n\n`
+  
+  // Format data sources in a human-readable way
+  if (context.refreshedData && Object.keys(context.refreshedData).length > 0) {
+    if (context.refreshedData.notion) {
+      message += `### Notion Data\n`
+      const notion = context.refreshedData.notion
+      if (notion.pages && notion.pages.length > 0) {
+        message += `**Pages Available:** ${notion.pages.length} page(s)\n`
+        if (notion.pages.length <= 5) {
+          notion.pages.forEach((page: any, idx: number) => {
+            message += `  ${idx + 1}. ${page.title || 'Untitled Page'}\n`
+          })
+        }
+        message += '\n'
+      }
+      if (notion.databases && notion.databases.length > 0) {
+        message += `**Databases Available:** ${notion.databases.length} database(s)\n`
+        if (notion.databases.length <= 5) {
+          notion.databases.forEach((db: any, idx: number) => {
+            message += `  ${idx + 1}. ${db.title || 'Untitled Database'}\n`
+          })
+        }
+        message += '\n'
+      }
+    }
+  } else {
+    message += `No data sources are currently connected.\n\n`
+  }
 
   if (context.previousRejections && context.previousRejections.length > 0) {
-    message += `Previous Action Rejections (learn from these):\n`
+    message += `## Previous Action Rejections\n\n`
+    message += `The following actions were previously rejected. Please learn from these to improve your recommendations:\n\n`
     context.previousRejections.forEach((rejection, index) => {
       message += `${index + 1}. ${rejection}\n`
     })
     message += '\n'
   }
 
-  message += `Please analyze this data and provide your insights and recommendations.`
+  message += `---\n\n`
+  message += `Please analyze the available data and provide your insights and recommendations in a clear, well-structured format. Use headings, bullet points, and clear sections to organize your analysis.`
 
   return message
 }

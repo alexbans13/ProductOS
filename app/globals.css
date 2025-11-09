@@ -26,3 +26,17 @@ body {
   }
 }
 
+/* Ensure input and textarea text is readable */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+textarea {
+  color: rgb(17, 24, 39) !important; /* text-gray-900 */
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: rgb(156, 163, 175) !important; /* text-gray-400 */
+}
+

@@ -75,8 +75,9 @@ export async function POST(
 
     const refreshedData: any = {}
     
+    // Parallelize data source refresh
     if (dataSources && dataSources.length > 0) {
-      for (const dataSource of dataSources) {
+      const refreshPromises = dataSources.map(async (dataSource) => {
         try {
           if (dataSource.type === 'notion' && dataSource.oauth_token) {
             const notionClient = createNotionClient(dataSource.oauth_token)
@@ -84,15 +85,27 @@ export async function POST(
               fetchNotionPages(notionClient).catch(() => []),
               fetchNotionDatabases(notionClient).catch(() => []),
             ])
-            refreshedData.notion = {
-              pages: pages.slice(0, 20), // Limit for context
-              databases: databases.slice(0, 20),
+            return {
+              type: 'notion',
+              data: {
+                pages: pages.slice(0, 20), // Limit for context
+                databases: databases.slice(0, 20),
+              }
             }
           }
+          return null
         } catch (error) {
           console.error(`Error refreshing ${dataSource.type}:`, error)
+          return null
         }
-      }
+      })
+
+      const refreshResults = await Promise.all(refreshPromises)
+      refreshResults.forEach((result) => {
+        if (result) {
+          refreshedData[result.type] = result.data
+        }
+      })
     }
 
     // Step 2: Create agent run for analysis

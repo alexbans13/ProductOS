@@ -65,22 +65,20 @@ export async function POST(
       return NextResponse.json({ error: runError.message }, { status: 500 })
     }
 
-    // Refresh data from all sources
-    const refreshResults: any[] = []
-    const errors: string[] = []
-
-    for (const dataSource of dataSources) {
+    // Refresh data from all sources in parallel
+    const refreshPromises = dataSources.map(async (dataSource) => {
       try {
         if (dataSource.type === 'notion' && dataSource.oauth_token) {
           const notionClient = createNotionClient(dataSource.oauth_token)
           
-          // Fetch pages and databases
+          // Fetch pages and databases in parallel
           const [pages, databases] = await Promise.all([
             fetchNotionPages(notionClient).catch(() => []),
             fetchNotionDatabases(notionClient).catch(() => []),
           ])
 
-          refreshResults.push({
+          return {
+            success: true,
             data_source_id: dataSource.id,
             type: 'notion',
             pages_count: pages.length,
@@ -89,14 +87,25 @@ export async function POST(
               pages: pages.slice(0, 10), // Limit to first 10 for storage
               databases: databases.slice(0, 10),
             },
-          })
+          }
         }
         // Add other data source types here (JIRA, Slack, etc.)
+        return { success: false, error: `Unsupported data source type: ${dataSource.type}` }
       } catch (error: any) {
-        errors.push(`Error refreshing ${dataSource.type}: ${error.message}`)
-        console.error(`Error refreshing data source ${dataSource.id}:`, error)
+        return {
+          success: false,
+          data_source_id: dataSource.id,
+          type: dataSource.type,
+          error: error.message,
+        }
       }
-    }
+    })
+
+    const refreshResults = await Promise.all(refreshPromises)
+    const successfulResults = refreshResults.filter((r) => r.success)
+    const errors = refreshResults
+      .filter((r) => !r.success)
+      .map((r) => `Error refreshing ${r.type}: ${r.error}`)
 
     // Update agent run status
     const { error: updateError } = await supabase

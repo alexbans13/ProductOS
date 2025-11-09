@@ -41,6 +41,34 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 The database schema has been created. All tables and RLS policies are in place.
 
+### Run Database Migrations
+
+1. Go to your Supabase dashboard: https://supabase.com/dashboard
+2. Navigate to SQL Editor
+3. Run the migration files in order:
+   - `supabase/migrations/001_initial_schema.sql` (already run)
+   - `supabase/migrations/002_add_project_image.sql` (adds image_url column to projects)
+
+### Set Up Storage Buckets
+
+You need to create two storage buckets for image uploads:
+
+1. **Create "project-images" bucket:**
+   - Go to Storage in your Supabase dashboard
+   - Click "New bucket"
+   - Name: `project-images`
+   - Public bucket: **Yes** (check this box)
+   - Click "Create bucket"
+
+2. **Create "avatars" bucket:**
+   - Go to Storage in your Supabase dashboard
+   - Click "New bucket"
+   - Name: `avatars`
+   - Public bucket: **Yes** (check this box)
+   - Click "Create bucket"
+
+Both buckets need to be public so images can be displayed in the app.
+
 ## Next Steps
 
 1. Set up Notion OAuth:
